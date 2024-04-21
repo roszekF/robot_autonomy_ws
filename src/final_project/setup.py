@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'map_publisher = final_project.map_publisher:main',
+            'custom_mapper = final_project.custom_mapper:main'
         ],
     },
 )

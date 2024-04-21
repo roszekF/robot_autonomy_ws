@@ -3,6 +3,7 @@ import numpy as np
 from rclpy.node import Node
 
 from nav_msgs.msg import OccupancyGrid
+from map_msgs.msg import OccupancyGridUpdate
 
 
 class MapPublisher(Node):
@@ -10,12 +11,25 @@ class MapPublisher(Node):
     def __init__(self):
         super().__init__('minimal_publisher')
         self.publisher_ = self.create_publisher(OccupancyGrid, '/custom_map', 10)
+        self.subscriber_map_update = self.create_subscription(OccupancyGridUpdate, '/custom_map_updates', self.map_update_callback, 10)
         timer_period = 1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-        self.grid = np.array([0] * 20000, dtype=np.int8)
+        self.grid = np.array([-1] * 20000, dtype=np.int8)
+
+
+    def map_update_callback(self, msg): # TODO - think about some better way to update the local area
+        self.get_logger().debug('Received map update')
+        for i in range(msg.height):
+            for j in range(msg.width):
+                idx = (msg.y + i) * 200 + (msg.x + j)
+                if 0 <= idx < len(self.grid):
+                    # update the pixel only if it is defined (not -1)
+                    self.grid[idx] = msg.data[i * msg.width + j] if msg.data[i * msg.width + j] != -1 else self.grid[idx]
+
 
     def timer_callback(self):
+        
         msg = OccupancyGrid()
 
         msg.header.stamp = self.get_clock().now().to_msg()
