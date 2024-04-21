@@ -19,12 +19,13 @@ class MapPublisher(Node):
 
 
     def map_update_callback(self, msg): # TODO - think about some better way to update the local area
-        self.get_logger().info('Received map update')
+        self.get_logger().debug('Received map update')
         for i in range(msg.height):
             for j in range(msg.width):
                 idx = (msg.y + i) * 200 + (msg.x + j)
                 if 0 <= idx < len(self.grid):
-                    self.grid[idx] = msg.data[i * msg.width + j]
+                    # update the pixel only if it is defined (not -1)
+                    self.grid[idx] = msg.data[i * msg.width + j] if msg.data[i * msg.width + j] != -1 else self.grid[idx]
 
 
     def timer_callback(self):

@@ -68,7 +68,8 @@ def generate_launch_description():
         package='final_project',
         executable='custom_mapper',
         name='custom_mapper',
-        output='screen'
+        output='screen',
+        parameters=[{'delay': 3.0}]
     )
     
     return LaunchDescription([
