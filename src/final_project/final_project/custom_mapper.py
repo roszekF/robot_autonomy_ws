@@ -28,6 +28,9 @@ class CustomMapper(Node):
         self.occupancy_gird_resolution = 0.1 # Align to map_publisher.py
         self.map_origin_x = -10.0  # Meters
         self.map_origin_y = -5.0  # Meters
+        
+        self.local_grid_width = 30
+        self.local_grid_height = 30
 
 
     def odom_callback(self, msg):
@@ -36,7 +39,7 @@ class CustomMapper(Node):
 
 
     def scan_callback(self, msg):
-        self.get_logger().info('Received scan data - callback')
+        self.get_logger().debug('Received scan data - callback')
         
         if self.robot_pose:
             map_update = self.update_map(msg)
@@ -59,8 +62,8 @@ class CustomMapper(Node):
         msg_map_update.header.stamp = self.get_clock().now().to_msg()
         msg_map_update.header.frame_id = 'map'
         
-        msg_map_update.width  = 30
-        msg_map_update.height = 30
+        msg_map_update.width  = self.local_grid_width
+        msg_map_update.height = self.local_grid_height
         
         msg_map_update.x = grid_x - msg_map_update.width // 2
         msg_map_update.y = grid_y - msg_map_update.height // 2
@@ -71,26 +74,39 @@ class CustomMapper(Node):
 
         return msg_map_update
     
-    def get_local_grid(self, x, y, z, scan) -> np.array:
-        return np.array([50] * 9000, dtype=np.int8) # FOR DEBUGGING
-        
+    def get_local_grid(self, x, y, rot, scan) -> np.array:
+        #return np.array([50] * 9000, dtype=np.int8) # FOR DEBUGGING
 
-        # get scan data
-        
+        local_grid = np.array([-1] * self.local_grid_width * self.local_grid_height, dtype=np.int8)
+        angle_increment = scan.angle_increment # get scan resolution:
+        num_measurements = len(scan.ranges)    # get number of measurements:
+        angle_min = scan.angle_min             # get the angle of the first measurement
 
-        # if the scan data is not available, return None
-        
+        # For each measurement, calculate the position of the obstacle in the local grid
+        for i in range(num_measurements):
+            angle = angle_min + i * angle_increment # TODO - Move at the end of the loop
+            distance = scan.ranges[i]
 
-        # if the scan data is inf, whole line is free (occupancy = 0)
-        
+            if distance == float('inf'):
+                continue # No obstacle detected
+            elif distance < scan.range_min or distance > scan.range_max:
+                continue # No obstacle detected in a valid range (valiid in terms of the lidar specs)
+            else:
+                x_obstacle = distance * np.cos(rot + angle)
+                y_obstacle = distance * np.sin(rot + angle)
 
-        # if the scan data is not inf, the line is free up to the point, where the obstacle is detected (occupancy = 100)
-        
+                x_obstacle_in_grid = int(x_obstacle / self.occupancy_gird_resolution + self.local_grid_width / 2)
+                y_obstacle_in_grid = int(y_obstacle / self.occupancy_gird_resolution + self.local_grid_height / 2)
 
-        # make a outliner around the detected obstacle (occupancy = 50)
+                if abs(x_obstacle_in_grid) > self.local_grid_width or \
+                   abs(y_obstacle_in_grid) > self.local_grid_height:
+                    continue # Check if the measurement is withing local grid, otherwise treat it as invalid
 
-        #pass
-        
+                local_grid[x_obstacle_in_grid + y_obstacle_in_grid * self.local_grid_height] = 100
+
+        return local_grid
+
+
 def main(args=None):
     rclpy.init(args=args)
     
@@ -100,6 +116,7 @@ def main(args=None):
     
     custom_mapper.destroy_node()
     rclpy.shutdown()
-    
+
+
 if __name__ == '__main__':
     main()

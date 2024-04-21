@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, ThisLaunchFileDir, PathJoinSubstitution
 from launch_ros.actions import Node
@@ -68,7 +68,15 @@ def generate_launch_description():
         package='final_project',
         executable='custom_mapper',
         name='custom_mapper',
-        output='screen'
+        output='screen',
+        parameters=[{'delay': 10.0}]
+    )
+
+    mapper_node_delay = TimerAction(
+        period=5.0,  # Delay time in seconds
+        actions=[
+            mapper_node
+        ]
     )
     
     return LaunchDescription([
@@ -78,5 +86,5 @@ def generate_launch_description():
         static_tf_custom_map_to_map,
         static_tf_custom_map_to_odom,
         map_publisher_node,
-        mapper_node
+        mapper_node_delay
     ])
