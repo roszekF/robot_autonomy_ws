@@ -48,7 +48,7 @@ class MapPublisher(Node):
         msg.data = self.grid.tolist()
 
         self.publisher_.publish(msg)
-        self.get_logger().info('Publishing map')
+        self.get_logger().debug('Publishing map')
         self.i += 1
 
 

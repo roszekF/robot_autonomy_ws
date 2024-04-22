@@ -12,6 +12,7 @@ from map_msgs.msg import OccupancyGridUpdate
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Header
 from geometry_msgs.msg import Pose
+from transforms3d import _gohlketransforms as tf_transformations
 
 import numpy as np
 
@@ -52,7 +53,7 @@ class CustomMapper(Node):
 
         x_pos = self.robot_pose.position.x
         y_pos = self.robot_pose.position.y
-        z_rot = self.robot_pose.orientation.z
+        yaw = self.quaternion_to_yaw(self.robot_pose.orientation)
 
         grid_x = int((x_pos - self.map_origin_x) / self.occupancy_gird_resolution)
         grid_y = int((y_pos - self.map_origin_y) / self.occupancy_gird_resolution)
@@ -68,43 +69,95 @@ class CustomMapper(Node):
         msg_map_update.x = grid_x - msg_map_update.width // 2
         msg_map_update.y = grid_y - msg_map_update.height // 2
         
-        local_grid = self.get_local_grid(x_pos, y_pos, z_rot, scan)
+        local_grid = self.get_local_grid(x_pos, y_pos, yaw, scan)
 
         msg_map_update.data = local_grid.tolist()
 
         return msg_map_update
     
-    def get_local_grid(self, x, y, rot, scan) -> np.array:
-        #return np.array([50] * 9000, dtype=np.int8) # FOR DEBUGGING
+    def quaternion_to_yaw(self, quaternion):
+        x, y, z, w = quaternion.x, quaternion.y, quaternion.z, quaternion.w
+        euler = tf_transformations.euler_from_quaternion([x, y, z, w])
+        return euler[2]
+    
+    
+    def get_local_grid(self, x, y, yaw, scan) -> np.array:
+        local_grid = np.array([0] * self.local_grid_width * self.local_grid_height, dtype=np.int8)
+        num_measurements = len(scan.ranges)
 
-        local_grid = np.array([-1] * self.local_grid_width * self.local_grid_height, dtype=np.int8)
-        angle_increment = scan.angle_increment # get scan resolution:
-        num_measurements = len(scan.ranges)    # get number of measurements:
-        angle_min = scan.angle_min             # get the angle of the first measurement
-
-        # For each measurement, calculate the position of the obstacle in the local grid
         for i in range(num_measurements):
-            angle = angle_min + i * angle_increment # TODO - Move at the end of the loop
+            angle = scan.angle_min + i * scan.angle_increment + yaw
             distance = scan.ranges[i]
 
-            if distance == float('inf'):
-                continue # No obstacle detected
-            elif distance < scan.range_min or distance > scan.range_max:
-                continue # No obstacle detected in a valid range (valiid in terms of the lidar specs)
-            else:
-                x_obstacle = distance * np.cos(rot + angle)
-                y_obstacle = distance * np.sin(rot + angle)
+            if distance == float('inf') or distance < scan.range_min or distance > scan.range_max:
+                continue
 
-                x_obstacle_in_grid = int(x_obstacle / self.occupancy_gird_resolution + self.local_grid_width / 2)
-                y_obstacle_in_grid = int(y_obstacle / self.occupancy_gird_resolution + self.local_grid_height / 2)
+            x_obstacle = x + distance * np.cos(angle)
+            y_obstacle = y + distance * np.sin(angle)
 
-                if abs(x_obstacle_in_grid) > self.local_grid_width or \
-                   abs(y_obstacle_in_grid) > self.local_grid_height:
-                    continue # Check if the measurement is withing local grid, otherwise treat it as invalid
+            # Convert to global coordinates accounting for robot orientation
+            x_obstacle_in_grid = int((x_obstacle - self.map_origin_x) / self.occupancy_gird_resolution)
+            y_obstacle_in_grid = int((y_obstacle - self.map_origin_y) / self.occupancy_gird_resolution)
 
-                local_grid[x_obstacle_in_grid + y_obstacle_in_grid * self.local_grid_height] = 100
+            if 0 <= x_obstacle_in_grid < self.local_grid_width and 0 <= y_obstacle_in_grid < self.local_grid_height:
+                index = x_obstacle_in_grid + y_obstacle_in_grid * self.local_grid_width
+                local_grid[index] = 100
 
         return local_grid
+
+        # angle_increment = scan.angle_increment
+        # num_measurements = len(scan.ranges)
+        # angle_min = scan.angle_min
+
+        # for i in range(num_measurements):
+        #     angle = angle_min + i * angle_increment
+        #     distance = scan.ranges[i]
+
+        #     if distance == float('inf') or distance < scan.range_min or distance > scan.range_max:
+        #         continue
+
+        #     x_obstacle = distance * np.cos(angle - rot)
+        #     y_obstacle = distance * np.sin(angle - rot)
+
+        #     x_obstacle_in_grid = int((x_obstacle / self.occupancy_gird_resolution) + (self.local_grid_width // 2))
+        #     y_obstacle_in_grid = int((y_obstacle / self.occupancy_gird_resolution) + (self.local_grid_height // 2))
+
+        #     if 0 <= x_obstacle_in_grid < self.local_grid_width and 0 <= y_obstacle_in_grid < self.local_grid_height:
+        #         index = x_obstacle_in_grid + y_obstacle_in_grid * self.local_grid_width
+        #         local_grid[index] = 100  # Marking the cell as occupied
+
+    
+    # def get_local_grid(self, x, y, rot, scan) -> np.array:
+    #     #return np.array([50] * 9000, dtype=np.int8) # FOR DEBUGGING
+
+    #     local_grid = np.array([0] * self.local_grid_width * self.local_grid_height, dtype=np.int8)
+    #     angle_increment = scan.angle_increment # get scan resolution:
+    #     num_measurements = len(scan.ranges)    # get number of measurements:
+    #     angle_min = scan.angle_min             # get the angle of the first measurement
+
+    #     # For each measurement, calculate the position of the obstacle in the local grid
+    #     for i in range(num_measurements):
+    #         angle = angle_min + i * angle_increment # TODO - Move at the end of the loop
+    #         distance = scan.ranges[i]
+
+    #         if distance == float('inf'):
+    #             continue # No obstacle detected
+    #         elif distance < scan.range_min or distance > scan.range_max:
+    #             continue # No obstacle detected in a valid range (valiid in terms of the lidar specs)
+    #         else:
+    #             x_obstacle = distance * np.cos(rot + angle)
+    #             y_obstacle = distance * np.sin(rot + angle)
+
+    #             x_obstacle_in_grid = int(x_obstacle / self.occupancy_gird_resolution + self.local_grid_width / 2)
+    #             y_obstacle_in_grid = int(y_obstacle / self.occupancy_gird_resolution + self.local_grid_height / 2)
+
+    #             if abs(x_obstacle_in_grid) > self.local_grid_width or \
+    #                abs(y_obstacle_in_grid) > self.local_grid_height:
+    #                 continue # Check if the measurement is withing local grid, otherwise treat it as invalid
+
+    #             local_grid[x_obstacle_in_grid + y_obstacle_in_grid * self.local_grid_height] = 100
+
+    #     return local_grid
 
 
 def main(args=None):

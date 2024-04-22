@@ -38,7 +38,8 @@ def generate_launch_description():
         executable='rviz2',
         name='rviz2',
         arguments=['-d', rviz_config_path],
-        output='screen'
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
     )
 
     static_tf_custom_map_to_map = Node(
@@ -61,7 +62,8 @@ def generate_launch_description():
         package='final_project',
         executable='map_publisher',
         name='map_publisher',
-        output='screen'
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
     )
     
     mapper_node = Node(
@@ -69,7 +71,10 @@ def generate_launch_description():
         executable='custom_mapper',
         name='custom_mapper',
         output='screen',
-        parameters=[{'delay': 10.0}]
+        parameters=[{
+            'delay': 10.0,
+            'use_sim_time': use_sim_time
+            }]
     )
 
     mapper_node_delay = TimerAction(
