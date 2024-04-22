@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+	    'bt_publisher = final_project.bt_publisher:main',	 
             'map_publisher = final_project.map_publisher:main',
         ],
     },
