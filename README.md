@@ -3,6 +3,7 @@
 Setup
 
 ```shell
+git submodule update --init --recursive
 source install/setup.bash
 rosdep install --from-paths src --rosdistro humble -y
 ```
