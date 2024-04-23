@@ -9,7 +9,7 @@
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
-  <exec_depend>transforms3d</exec_depend>
+  <exec_depend>python-transforms3d-pip</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
 
