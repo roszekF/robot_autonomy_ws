@@ -7,7 +7,7 @@ from rclpy.node import Node
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
-from tf_transformations import euler_from_quaternion, quaternion_from_euler
+from transforms3d import euler
 
 
 class MapPublisher(Node):
@@ -38,11 +38,11 @@ class MapPublisher(Node):
         self.map_message.info.origin.position.x = -10.0
         self.map_message.info.origin.position.y = -5.0
         self.map_message.info.origin.position.z = 0.0
-        quat = quaternion_from_euler(0, 0, 0)
-        self.map_message.info.origin.orientation.x = quat[0]
-        self.map_message.info.origin.orientation.y = quat[1]
-        self.map_message.info.origin.orientation.z = quat[2]
-        self.map_message.info.origin.orientation.w = quat[3]
+        quat = euler.euler2quat(0, 0, 0)
+        self.map_message.info.origin.orientation.w = quat[0]
+        self.map_message.info.origin.orientation.x = quat[1]
+        self.map_message.info.origin.orientation.y = quat[2]
+        self.map_message.info.origin.orientation.z = quat[3]
 
 
     def timer_callback(self):
@@ -57,7 +57,7 @@ class MapPublisher(Node):
                 return
             robot_x = self.latest_odom_msg.pose.pose.position.x
             robot_y = self.latest_odom_msg.pose.pose.position.y
-            _, _, robot_yaw = euler_from_quaternion([self.latest_odom_msg.pose.pose.orientation.x,
+            robot_yaw, _, _ = euler.quat2euler([self.latest_odom_msg.pose.pose.orientation.x,
                                                 self.latest_odom_msg.pose.pose.orientation.y,
                                                 self.latest_odom_msg.pose.pose.orientation.z,
                                                 self.latest_odom_msg.pose.pose.orientation.w])
