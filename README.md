@@ -4,8 +4,10 @@ Setup
 
 ```shell
 git submodule update --init --recursive
-source install/setup.bash
+colcon build
 rosdep install --from-paths src --rosdistro humble -y
+source install/setup.bash
+source sim_setup.bash
 ```
 
 in one terminal run
@@ -14,8 +16,14 @@ in one terminal run
 ros2 launch my_turtlebot turtlebot_simulation.launch.py
 ```
 
-and this in another one
+this in another one
 
 ```shell
 ros2 run final_project map_publisher
+```
+
+and this in a third one
+
+```shell
+ros2 run final_project bt_publisher
 ```
