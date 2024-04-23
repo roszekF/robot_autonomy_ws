@@ -91,7 +91,7 @@ def spin_fn(pub):
     print("spin called") # Debug 
     msg = Twist()
     # Set linear velocity (m/s) for moving straight
-    msg.angular.z = 50.7  # high angular velocity for avoiding getting stuck  
+    msg.angular.z = 0.7  # high angular velocity for avoiding getting stuck  
     msg.linear.x  = 0.1 
     pub.publisher_.publish(msg)
     print("message published")
